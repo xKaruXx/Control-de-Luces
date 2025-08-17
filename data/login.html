@@ -1,0 +1,385 @@
+<!DOCTYPE HTML>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Control de Luces</title>
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/dist/css/adminlte.min.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      width: 400px;
+    }
+    .login-card-body {
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .login-logo {
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .btn-login {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      transition: transform 0.2s;
+    }
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    }
+    .error-message {
+      display: none;
+      margin-top: 10px;
+    }
+    .success-message {
+      display: none;
+      margin-top: 10px;
+    }
+    .security-info {
+      background: rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 5px;
+      color: white;
+      margin-top: 20px;
+      font-size: 0.9em;
+    }
+    .spinner {
+      display: none;
+      margin-left: 10px;
+    }
+    .session-info {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: white;
+      background: rgba(0,0,0,0.3);
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body class="hold-transition login-page">
+  <div class="session-info" id="sessionInfo">
+    <i class="fas fa-user-circle"></i> <span id="currentUser">-</span>
+    <button class="btn btn-sm btn-danger ml-2" onclick="logout()">
+      <i class="fas fa-sign-out-alt"></i> Salir
+    </button>
+  </div>
+  
+  <div class="login-box">
+    <div class="login-logo">
+      <i class="fas fa-lightbulb fa-3x mb-3"></i>
+      <br>
+      <b>Control de Luces</b>
+      <br>
+      <small>San Luis</small>
+    </div>
+    
+    <div class="card">
+      <div class="card-body login-card-body">
+        <p class="login-box-msg">Iniciar sesión para continuar</p>
+        
+        <form id="loginForm" onsubmit="return handleLogin(event)">
+          <div class="input-group mb-3">
+            <input type="text" 
+                   id="username" 
+                   class="form-control" 
+                   placeholder="Usuario" 
+                   required 
+                   autocomplete="username">
+            <div class="input-group-append">
+              <div class="input-group-text">
+                <span class="fas fa-user"></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="input-group mb-3">
+            <input type="password" 
+                   id="password" 
+                   class="form-control" 
+                   placeholder="Contraseña" 
+                   required 
+                   autocomplete="current-password">
+            <div class="input-group-append">
+              <div class="input-group-text">
+                <span class="fas fa-lock"></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-8">
+              <div class="icheck-primary">
+                <input type="checkbox" id="remember">
+                <label for="remember">
+                  Recordarme
+                </label>
+              </div>
+            </div>
+            <div class="col-4">
+              <button type="submit" class="btn btn-primary btn-block btn-login">
+                Ingresar
+                <span class="spinner spinner-border spinner-border-sm" id="spinner"></span>
+              </button>
+            </div>
+          </div>
+        </form>
+        
+        <div class="alert alert-danger error-message" id="errorMessage">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span id="errorText">Error de autenticación</span>
+        </div>
+        
+        <div class="alert alert-success success-message" id="successMessage">
+          <i class="fas fa-check-circle"></i>
+          <span id="successText">Login exitoso</span>
+        </div>
+        
+        <hr>
+        
+        <p class="mb-1 text-center">
+          <small>
+            <i class="fas fa-info-circle"></i> 
+            Contacte al administrador si olvidó sus credenciales
+          </small>
+        </p>
+        
+        <div class="text-center mt-3">
+          <button class="btn btn-sm btn-outline-secondary" onclick="showDemoCredentials()">
+            <i class="fas fa-key"></i> Ver usuarios demo
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="security-info">
+      <i class="fas fa-shield-alt"></i> <strong>Seguridad:</strong>
+      <ul class="mb-0 pl-3">
+        <li>Sesión expira en 30 minutos de inactividad</li>
+        <li>Máximo 5 intentos de login</li>
+        <li>Conexión encriptada con el servidor</li>
+        <li>Tokens seguros SHA-256</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Modal de credenciales demo -->
+  <div class="modal fade" id="demoModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Usuarios Demo</h5>
+          <button type="button" class="close" data-dismiss="modal">
+            <span>&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Rol</th>
+                <th>Permisos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>admin</code></td>
+                <td><code>admin123</code></td>
+                <td><span class="badge badge-danger">Admin</span></td>
+                <td>Acceso total</td>
+              </tr>
+              <tr>
+                <td><code>operator</code></td>
+                <td><code>oper123</code></td>
+                <td><span class="badge badge-warning">Operador</span></td>
+                <td>Control de luces</td>
+              </tr>
+              <tr>
+                <td><code>viewer</code></td>
+                <td><code>view123</code></td>
+                <td><span class="badge badge-info">Visor</span></td>
+                <td>Solo lectura</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Importante:</strong> Cambiar estas contraseñas en producción
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://adminlte.io/themes/v3/plugins/jquery/jquery.min.js"></script>
+  <script src="https://adminlte.io/themes/v3/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Verificar si ya hay una sesión activa
+    window.onload = function() {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        validateSession(token);
+      }
+    };
+    
+    // Manejar login
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const remember = document.getElementById('remember').checked;
+      
+      // Mostrar spinner
+      document.getElementById('spinner').style.display = 'inline-block';
+      hideMessages();
+      
+      // Hacer petición de login
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('spinner').style.display = 'none';
+        
+        if (data.token) {
+          // Login exitoso
+          if (remember) {
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('username', username);
+            localStorage.setItem('userRole', data.role);
+          } else {
+            sessionStorage.setItem('authToken', data.token);
+            sessionStorage.setItem('username', username);
+            sessionStorage.setItem('userRole', data.role);
+          }
+          
+          showSuccess('Login exitoso. Redirigiendo...');
+          
+          // Redirigir según el rol
+          setTimeout(() => {
+            if (data.role === 3) { // Admin
+              window.location.href = '/diagnostico.html';
+            } else {
+              window.location.href = '/index.html';
+            }
+          }, 1500);
+        } else {
+          // Error de login
+          showError(data.error || 'Credenciales inválidas');
+        }
+      })
+      .catch(error => {
+        document.getElementById('spinner').style.display = 'none';
+        showError('Error de conexión con el servidor');
+        console.error('Error:', error);
+      });
+      
+      return false;
+    }
+    
+    // Validar sesión existente
+    function validateSession(token) {
+      fetch('/api/auth/validate', {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.valid) {
+          // Sesión válida, mostrar info y redirigir
+          document.getElementById('sessionInfo').style.display = 'block';
+          document.getElementById('currentUser').textContent = data.username;
+          
+          showSuccess('Sesión activa. Redirigiendo...');
+          setTimeout(() => {
+            window.location.href = '/index.html';
+          }, 1000);
+        } else {
+          // Sesión inválida, limpiar storage
+          localStorage.removeItem('authToken');
+          sessionStorage.removeItem('authToken');
+        }
+      })
+      .catch(error => {
+        console.error('Error validando sesión:', error);
+      });
+    }
+    
+    // Logout
+    function logout() {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      
+      if (token) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        })
+        .then(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.reload();
+        })
+        .catch(error => {
+          console.error('Error en logout:', error);
+        });
+      }
+    }
+    
+    // Mostrar error
+    function showError(message) {
+      document.getElementById('errorText').textContent = message;
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('successMessage').style.display = 'none';
+    }
+    
+    // Mostrar éxito
+    function showSuccess(message) {
+      document.getElementById('successText').textContent = message;
+      document.getElementById('successMessage').style.display = 'block';
+      document.getElementById('errorMessage').style.display = 'none';
+    }
+    
+    // Ocultar mensajes
+    function hideMessages() {
+      document.getElementById('errorMessage').style.display = 'none';
+      document.getElementById('successMessage').style.display = 'none';
+    }
+    
+    // Mostrar credenciales demo
+    function showDemoCredentials() {
+      $('#demoModal').modal('show');
+    }
+    
+    // Enter para submit
+    document.getElementById('password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        handleLogin(e);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE HTML>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo - Control de Luces San Luis</title>
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <style>
+    .demo-notice {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="hold-transition sidebar-mini">
+  <div class="demo-notice">
+    ⚡ MODO DEMO - Sin conexión a ESP8266 - Datos simulados ⚡
+  </div>
+  <div class="wrapper">
+    <header class="main-header">
+      <nav class="navbar navbar-expand navbar-dark">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="#"><i class="fas fa-bars"></i></a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="#" class="nav-link">Inicio</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <aside class="main-sidebar elevation-4">
+      <a href="#" class="brand-link">
+        <span class="brand-text font-weight-light">Control de Luces</span>
+      </a>
+      <div class="sidebar">
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" role="menu">
+            <li class="nav-item">
+              <a href="#" class="nav-link active">
+                <i class="nav-icon fas fa-lightbulb"></i>
+                <p>Control de Luces</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link" onclick="alert('En modo demo esta función no está disponible')">
+                <i class="nav-icon fas fa-stethoscope"></i>
+                <p>Diagnóstico</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link" onclick="alert('En modo demo esta función no está disponible')">
+                <i class="nav-icon fas fa-cogs"></i>
+                <p>Configuración</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link" onclick="alert('En modo demo esta función no está disponible')">
+                <i class="nav-icon fas fa-exclamation-triangle"></i>
+                <p>Detección de Fallas</p>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+    <div class="content-wrapper">
+      <div class="content-header">
+        <div class="container-fluid">
+          <h1 class="m-0 text-dark">Sistema de Control de Luces - San Luis</h1>
+          <small>Versión 0.3.0 - Fase 1 Completada</small>
+        </div>
+      </div>
+      <div class="content">
+        <div class="container-fluid">
+          <!-- Estadísticas -->
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-success"><i class="fas fa-lightbulb"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">Luces Encendidas</span>
+                  <span class="info-box-number" id="luces-on">0</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-gray"><i class="fas fa-moon"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">Luces Apagadas</span>
+                  <span class="info-box-number" id="luces-off">0</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-danger"><i class="fas fa-exclamation-triangle"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">Fallas Detectadas</span>
+                  <span class="info-box-number" id="luces-falla">0</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-info"><i class="fas fa-percentage"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">Eficiencia</span>
+                  <span class="info-box-number" id="eficiencia">0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Mapa -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Mapa de Luminarias</h3>
+              <div class="card-tools">
+                <button class="btn btn-sm btn-primary" onclick="agregarLuzAleatoria()">
+                  <i class="fas fa-plus"></i> Agregar Luz Demo
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="simularFalla()">
+                  <i class="fas fa-bolt"></i> Simular Falla
+                </button>
+                <button class="btn btn-sm btn-success" onclick="encenderTodas()">
+                  <i class="fas fa-sun"></i> Encender Todas
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="apagarTodas()">
+                  <i class="fas fa-moon"></i> Apagar Todas
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="map" style="height: 500px;"></div>
+            </div>
+            <div class="card-footer">
+              <small class="text-muted">
+                <i class="fas fa-info-circle"></i> 
+                Click en una luminaria para cambiar su estado. 
+                Verde = Encendida, Gris = Apagada, Rojo = Falla
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="main-footer">
+      <strong>Control de Luces - San Luis &copy; 2024</strong>
+      <div class="float-right">
+        <span class="badge badge-info">MODO DEMO</span>
+      </div>
+    </footer>
+  </div>
+  
+  <script src="https://adminlte.io/themes/v3/plugins/jquery/jquery.min.js"></script>
+  <script src="https://adminlte.io/themes/v3/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="https://adminlte.io/themes/v3/dist/js/adminlte.min.js"></script>
+  
+  <script>
+    // Datos demo de luminarias
+    let lucesDemo = [
+      { id: 1, lat: -33.301726, lng: -66.337752, estado: 'encendida' },
+      { id: 2, lat: -33.302726, lng: -66.336752, estado: 'apagada' },
+      { id: 3, lat: -33.300726, lng: -66.338752, estado: 'encendida' },
+      { id: 4, lat: -33.303726, lng: -66.335752, estado: 'falla' },
+      { id: 5, lat: -33.299726, lng: -66.339752, estado: 'encendida' },
+      { id: 6, lat: -33.304726, lng: -66.334752, estado: 'apagada' },
+      { id: 7, lat: -33.298726, lng: -66.340752, estado: 'encendida' },
+      { id: 8, lat: -33.305726, lng: -66.333752, estado: 'encendida' }
+    ];
+    
+    let markers = [];
+    let nextId = 9;
+    
+    // Inicializar mapa
+    var map = L.map('map').setView([-33.301726, -66.337752], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Función para actualizar estadísticas
+    function actualizarEstadisticas() {
+      let encendidas = lucesDemo.filter(l => l.estado === 'encendida').length;
+      let apagadas = lucesDemo.filter(l => l.estado === 'apagada').length;
+      let fallas = lucesDemo.filter(l => l.estado === 'falla').length;
+      let total = lucesDemo.length;
+      
+      document.getElementById('luces-on').textContent = encendidas;
+      document.getElementById('luces-off').textContent = apagadas;
+      document.getElementById('luces-falla').textContent = fallas;
+      
+      let eficiencia = total > 0 ? Math.round((encendidas / (total - fallas)) * 100) : 0;
+      document.getElementById('eficiencia').textContent = eficiencia + '%';
+    }
+    
+    // Función para dibujar luminarias
+    function dibujarLuminarias() {
+      // Limpiar marcadores anteriores
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      
+      // Dibujar nuevas
+      lucesDemo.forEach(luz => {
+        let color = luz.estado === 'encendida' ? '#28a745' :
+                   luz.estado === 'apagada' ? '#6c757d' : '#dc3545';
+        
+        let marker = L.circleMarker([luz.lat, luz.lng], {
+          radius: 12,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.8,
+          weight: 2
+        });
+        
+        // Popup con info
+        marker.bindPopup(`
+          <div style="text-align: center;">
+            <strong>Luminaria #${luz.id}</strong><br>
+            Estado: <span style="color: ${color}; font-weight: bold;">${luz.estado.toUpperCase()}</span><br>
+            <small>Lat: ${luz.lat.toFixed(6)}<br>Lng: ${luz.lng.toFixed(6)}</small><br><br>
+            <button class="btn btn-sm btn-success" onclick="cambiarEstado(${luz.id}, 'encendida')">Encender</button>
+            <button class="btn btn-sm btn-secondary" onclick="cambiarEstado(${luz.id}, 'apagada')">Apagar</button>
+            <button class="btn btn-sm btn-danger" onclick="cambiarEstado(${luz.id}, 'falla')">Falla</button>
+          </div>
+        `);
+        
+        marker.addTo(map);
+        markers.push(marker);
+      });
+      
+      actualizarEstadisticas();
+    }
+    
+    // Cambiar estado de una luz
+    function cambiarEstado(id, nuevoEstado) {
+      let luz = lucesDemo.find(l => l.id === id);
+      if (luz) {
+        luz.estado = nuevoEstado;
+        dibujarLuminarias();
+        map.closePopup();
+      }
+    }
+    
+    // Agregar luz aleatoria
+    function agregarLuzAleatoria() {
+      let lat = -33.301726 + (Math.random() - 0.5) * 0.02;
+      let lng = -66.337752 + (Math.random() - 0.5) * 0.02;
+      let estados = ['encendida', 'apagada', 'encendida', 'encendida']; // Mayor probabilidad de encendida
+      let estado = estados[Math.floor(Math.random() * estados.length)];
+      
+      lucesDemo.push({
+        id: nextId++,
+        lat: lat,
+        lng: lng,
+        estado: estado
+      });
+      
+      dibujarLuminarias();
+    }
+    
+    // Simular falla aleatoria
+    function simularFalla() {
+      let lucesOperativas = lucesDemo.filter(l => l.estado !== 'falla');
+      if (lucesOperativas.length > 0) {
+        let luzAleatoria = lucesOperativas[Math.floor(Math.random() * lucesOperativas.length)];
+        luzAleatoria.estado = 'falla';
+        dibujarLuminarias();
+        
+        // Mostrar alerta
+        alert('⚠️ Falla detectada en Luminaria #' + luzAleatoria.id);
+      }
+    }
+    
+    // Encender todas
+    function encenderTodas() {
+      lucesDemo.forEach(luz => {
+        if (luz.estado !== 'falla') {
+          luz.estado = 'encendida';
+        }
+      });
+      dibujarLuminarias();
+    }
+    
+    // Apagar todas
+    function apagarTodas() {
+      lucesDemo.forEach(luz => {
+        if (luz.estado !== 'falla') {
+          luz.estado = 'apagada';
+        }
+      });
+      dibujarLuminarias();
+    }
+    
+    // Simular actualización periódica
+    setInterval(() => {
+      // Cambiar estado aleatorio ocasionalmente
+      if (Math.random() > 0.8) {
+        let luz = lucesDemo[Math.floor(Math.random() * lucesDemo.length)];
+        if (luz.estado !== 'falla' && Math.random() > 0.5) {
+          luz.estado = luz.estado === 'encendida' ? 'apagada' : 'encendida';
+          dibujarLuminarias();
+        }
+      }
+    }, 5000);
+    
+    // Inicializar
+    dibujarLuminarias();
+  </script>
+</body>
+</html>
