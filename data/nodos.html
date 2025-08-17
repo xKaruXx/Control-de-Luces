@@ -1,0 +1,653 @@
+<!DOCTYPE HTML>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Nodos - Control de Luces</title>
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="https://adminlte.io/themes/v3/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <style>
+    #nodesMap { 
+      height: 400px; 
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .node-card {
+      border-left: 4px solid #28a745;
+      margin-bottom: 10px;
+      transition: all 0.3s;
+    }
+    .node-card.offline {
+      border-left-color: #dc3545;
+      opacity: 0.7;
+    }
+    .node-card.warning {
+      border-left-color: #ffc107;
+    }
+    .node-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    .node-status {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    .status-online { background: #28a745; color: white; }
+    .status-offline { background: #dc3545; color: white; }
+    .status-warning { background: #ffc107; color: dark; }
+    
+    .mqtt-topic {
+      font-family: 'Courier New', monospace;
+      background: #f4f4f4;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    
+    .telemetry-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #007bff;
+    }
+    
+    .command-btn {
+      margin: 2px;
+    }
+    
+    .progress-ota {
+      display: none;
+    }
+    
+    .node-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    
+    .node-details.show {
+      max-height: 500px;
+    }
+  </style>
+</head>
+<body class="hold-transition sidebar-mini">
+  <div class="wrapper">
+    <!-- Header -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block">
+          <a href="/" class="nav-link">Inicio</a>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block">
+          <a href="/nodos.html" class="nav-link active">Nodos</a>
+        </li>
+      </ul>
+      
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <span class="nav-link">
+            <i class="fas fa-network-wired"></i> MQTT: 
+            <span id="mqttStatus" class="badge badge-success">Conectado</span>
+          </span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+      <a href="/" class="brand-link">
+        <span class="brand-text font-weight-light">Control de Luces v0.6.0</span>
+      </a>
+
+      <div class="sidebar">
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" role="menu">
+            <li class="nav-item">
+              <a href="/" class="nav-link">
+                <i class="nav-icon fas fa-map"></i>
+                <p>Mapa Principal</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/nodos.html" class="nav-link active">
+                <i class="nav-icon fas fa-network-wired"></i>
+                <p>Gestión de Nodos
+                  <span class="badge badge-info right" id="nodeCount">0</span>
+                </p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/configuracion.html" class="nav-link">
+                <i class="nav-icon fas fa-cogs"></i>
+                <p>Configuración</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/diagnostico.html" class="nav-link">
+                <i class="nav-icon fas fa-stethoscope"></i>
+                <p>Diagnóstico</p>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <div class="content-wrapper">
+      <div class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1 class="m-0">Gestión de Nodos IoT</h1>
+            </div>
+            <div class="col-sm-6">
+              <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                <li class="breadcrumb-item active">Nodos</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="content">
+        <div class="container-fluid">
+          <!-- Estadísticas -->
+          <div class="row">
+            <div class="col-lg-3 col-6">
+              <div class="small-box bg-success">
+                <div class="inner">
+                  <h3 id="nodesOnline">0</h3>
+                  <p>Nodos Online</p>
+                </div>
+                <div class="icon">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-lg-3 col-6">
+              <div class="small-box bg-danger">
+                <div class="inner">
+                  <h3 id="nodesOffline">0</h3>
+                  <p>Nodos Offline</p>
+                </div>
+                <div class="icon">
+                  <i class="fas fa-times-circle"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-lg-3 col-6">
+              <div class="small-box bg-warning">
+                <div class="inner">
+                  <h3 id="totalPower">0</h3>
+                  <p>Consumo Total (W)</p>
+                </div>
+                <div class="icon">
+                  <i class="fas fa-bolt"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-lg-3 col-6">
+              <div class="small-box bg-info">
+                <div class="inner">
+                  <h3 id="lightsOn">0</h3>
+                  <p>Luces Encendidas</p>
+                </div>
+                <div class="icon">
+                  <i class="fas fa-lightbulb"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controles Globales -->
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card card-primary">
+                <div class="card-header">
+                  <h3 class="card-title">Controles Globales</h3>
+                </div>
+                <div class="card-body">
+                  <button class="btn btn-success" onclick="sendGlobalCommand('all_on')">
+                    <i class="fas fa-power-off"></i> Encender Todas
+                  </button>
+                  <button class="btn btn-danger" onclick="sendGlobalCommand('all_off')">
+                    <i class="fas fa-power-off"></i> Apagar Todas
+                  </button>
+                  <button class="btn btn-info" onclick="discoverNodes()">
+                    <i class="fas fa-search"></i> Descubrir Nodos
+                  </button>
+                  <button class="btn btn-warning" onclick="checkAllUpdates()">
+                    <i class="fas fa-sync"></i> Verificar Actualizaciones
+                  </button>
+                  <button class="btn btn-secondary" onclick="refreshAll()">
+                    <i class="fas fa-redo"></i> Actualizar Estado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Mapa de Nodos -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Mapa de Nodos</h3>
+                  <div class="card-tools">
+                    <button class="btn btn-tool" onclick="centerMap()">
+                      <i class="fas fa-compress-arrows-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div id="nodesMap"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Nodos -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Nodos Descubiertos</h3>
+                  <div class="card-tools">
+                    <input type="text" class="form-control form-control-sm" placeholder="Buscar nodo..." id="searchNode">
+                  </div>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                  <div id="nodesList">
+                    <!-- Se llena dinámicamente -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalles del Nodo Seleccionado -->
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card card-info collapsed-card" id="nodeDetailsCard">
+                <div class="card-header">
+                  <h3 class="card-title">Detalles del Nodo</h3>
+                  <div class="card-tools">
+                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-4">
+                      <h5>Información</h5>
+                      <table class="table table-sm">
+                        <tr><td>ID:</td><td id="detailNodeId">-</td></tr>
+                        <tr><td>Tipo:</td><td id="detailNodeType">-</td></tr>
+                        <tr><td>IP:</td><td id="detailNodeIP">-</td></tr>
+                        <tr><td>MAC:</td><td id="detailNodeMAC">-</td></tr>
+                        <tr><td>Versión:</td><td id="detailNodeVersion">-</td></tr>
+                        <tr><td>Uptime:</td><td id="detailNodeUptime">-</td></tr>
+                      </table>
+                    </div>
+                    <div class="col-md-4">
+                      <h5>Telemetría</h5>
+                      <div class="info-box">
+                        <span class="info-box-icon bg-warning"><i class="fas fa-bolt"></i></span>
+                        <div class="info-box-content">
+                          <span class="info-box-text">Consumo</span>
+                          <span class="info-box-number" id="detailPower">0 W</span>
+                        </div>
+                      </div>
+                      <div class="info-box">
+                        <span class="info-box-icon bg-info"><i class="fas fa-memory"></i></span>
+                        <div class="info-box-content">
+                          <span class="info-box-text">Memoria Libre</span>
+                          <span class="info-box-number" id="detailMemory">0 KB</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <h5>Controles</h5>
+                      <button class="btn btn-success btn-sm command-btn" onclick="sendNodeCommand('on')">
+                        <i class="fas fa-power-off"></i> Encender
+                      </button>
+                      <button class="btn btn-danger btn-sm command-btn" onclick="sendNodeCommand('off')">
+                        <i class="fas fa-power-off"></i> Apagar
+                      </button>
+                      <button class="btn btn-warning btn-sm command-btn" onclick="sendNodeCommand('restart')">
+                        <i class="fas fa-redo"></i> Reiniciar
+                      </button>
+                      <button class="btn btn-info btn-sm command-btn" onclick="checkNodeUpdate()">
+                        <i class="fas fa-download"></i> Actualizar
+                      </button>
+                      
+                      <div class="progress progress-ota mt-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="otaProgress" style="width: 0%">0%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://adminlte.io/themes/v3/plugins/jquery/jquery.min.js"></script>
+  <script src="https://adminlte.io/themes/v3/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="https://adminlte.io/themes/v3/dist/js/adminlte.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  
+  <script>
+    let map;
+    let nodes = {};
+    let markers = {};
+    let selectedNodeId = null;
+    const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    // Inicializar mapa
+    function initMap() {
+      map = L.map('nodesMap').setView([-33.301726, -66.337752], 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+    }
+    
+    // Cargar nodos
+    function loadNodes() {
+      fetch('/api/mqtt/nodes', {
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      })
+      .then(response => response.json())
+      .then(data => {
+        nodes = {};
+        data.forEach(node => {
+          nodes[node.nodeId] = node;
+        });
+        updateNodesList();
+        updateMap();
+        updateStats();
+      });
+    }
+    
+    // Actualizar lista de nodos
+    function updateNodesList() {
+      let html = '';
+      let searchTerm = $('#searchNode').val().toLowerCase();
+      
+      Object.values(nodes).forEach(node => {
+        if (searchTerm && !node.nodeId.toLowerCase().includes(searchTerm)) {
+          return;
+        }
+        
+        let statusClass = node.online ? 'online' : 'offline';
+        let statusBadge = node.online ? 'status-online' : 'status-offline';
+        let statusText = node.online ? 'Online' : 'Offline';
+        
+        html += `
+          <div class="card node-card ${statusClass}" onclick="selectNode('${node.nodeId}')">
+            <div class="card-body p-2">
+              <div class="row">
+                <div class="col-8">
+                  <h6>${node.nodeId}</h6>
+                  <small class="text-muted">${node.ip || 'Sin IP'}</small>
+                  <br>
+                  <span class="mqtt-topic">Zone: ${node.zone || 'default'}</span>
+                </div>
+                <div class="col-4 text-right">
+                  <span class="node-status ${statusBadge}">${statusText}</span>
+                  <br>
+                  <small>${node.type || 'LUMINARIA'}</small>
+                  ${node.lightOn ? '<i class="fas fa-lightbulb text-warning"></i>' : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      $('#nodesList').html(html || '<p class="text-muted">No se encontraron nodos</p>');
+      $('#nodeCount').text(Object.keys(nodes).length);
+    }
+    
+    // Actualizar mapa
+    function updateMap() {
+      // Limpiar marcadores anteriores
+      Object.values(markers).forEach(marker => {
+        map.removeLayer(marker);
+      });
+      markers = {};
+      
+      // Agregar nuevos marcadores
+      Object.values(nodes).forEach(node => {
+        if (node.lat && node.lng) {
+          let icon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color: ${node.online ? '#28a745' : '#dc3545'}; 
+                               width: 20px; height: 20px; border-radius: 50%;
+                               border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                   </div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+          
+          let marker = L.marker([node.lat, node.lng], {icon: icon})
+            .bindPopup(`<b>${node.nodeId}</b><br>
+                       Estado: ${node.online ? 'Online' : 'Offline'}<br>
+                       IP: ${node.ip || 'Sin IP'}<br>
+                       Luz: ${node.lightOn ? 'Encendida' : 'Apagada'}`)
+            .addTo(map);
+          
+          marker.on('click', () => selectNode(node.nodeId));
+          markers[node.nodeId] = marker;
+        }
+      });
+    }
+    
+    // Actualizar estadísticas
+    function updateStats() {
+      let online = 0, offline = 0, lightsOn = 0, totalPower = 0;
+      
+      Object.values(nodes).forEach(node => {
+        if (node.online) {
+          online++;
+          if (node.lightOn) lightsOn++;
+          totalPower += (node.power || 0);
+        } else {
+          offline++;
+        }
+      });
+      
+      $('#nodesOnline').text(online);
+      $('#nodesOffline').text(offline);
+      $('#lightsOn').text(lightsOn);
+      $('#totalPower').text(Math.round(totalPower));
+    }
+    
+    // Seleccionar nodo
+    function selectNode(nodeId) {
+      selectedNodeId = nodeId;
+      let node = nodes[nodeId];
+      
+      if (!node) return;
+      
+      $('#detailNodeId').text(node.nodeId);
+      $('#detailNodeType').text(node.type || 'LUMINARIA');
+      $('#detailNodeIP').text(node.ip || '-');
+      $('#detailNodeMAC').text(node.mac || '-');
+      $('#detailNodeVersion').text(node.version || '-');
+      $('#detailNodeUptime').text(formatUptime(node.uptime || 0));
+      $('#detailPower').text((node.power || 0) + ' W');
+      $('#detailMemory').text(Math.round((node.heap || 0) / 1024) + ' KB');
+      
+      // Expandir tarjeta de detalles
+      $('#nodeDetailsCard').CardWidget('expand');
+      
+      // Centrar mapa en el nodo si tiene ubicación
+      if (node.lat && node.lng) {
+        map.setView([node.lat, node.lng], 16);
+        if (markers[nodeId]) {
+          markers[nodeId].openPopup();
+        }
+      }
+    }
+    
+    // Enviar comando global
+    function sendGlobalCommand(command) {
+      fetch('/api/mqtt/command/all', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ command: command })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Comando enviado:', data);
+        setTimeout(loadNodes, 2000);  // Recargar después de 2 segundos
+      });
+    }
+    
+    // Enviar comando a nodo
+    function sendNodeCommand(command) {
+      if (!selectedNodeId) return;
+      
+      fetch(`/api/mqtt/command/${selectedNodeId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ command: command })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Comando enviado a nodo:', data);
+        setTimeout(() => loadNodes(), 2000);
+      });
+    }
+    
+    // Descubrir nodos
+    function discoverNodes() {
+      fetch('/api/mqtt/discover', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Discovery iniciado');
+        setTimeout(loadNodes, 3000);  // Esperar 3 segundos para discovery
+      });
+    }
+    
+    // Verificar actualizaciones
+    function checkAllUpdates() {
+      fetch('/api/mqtt/ota/check', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert('Verificación de actualizaciones iniciada');
+      });
+    }
+    
+    // Verificar actualización de nodo
+    function checkNodeUpdate() {
+      if (!selectedNodeId) return;
+      
+      $('.progress-ota').show();
+      
+      fetch(`/api/mqtt/ota/${selectedNodeId}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Simular progreso
+        let progress = 0;
+        let interval = setInterval(() => {
+          progress += 10;
+          $('#otaProgress').css('width', progress + '%').text(progress + '%');
+          
+          if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              $('.progress-ota').hide();
+              alert('Actualización completada');
+              loadNodes();
+            }, 1000);
+          }
+        }, 500);
+      });
+    }
+    
+    // Centrar mapa
+    function centerMap() {
+      if (Object.keys(markers).length > 0) {
+        let group = new L.featureGroup(Object.values(markers));
+        map.fitBounds(group.getBounds());
+      } else {
+        map.setView([-33.301726, -66.337752], 13);
+      }
+    }
+    
+    // Formatear uptime
+    function formatUptime(seconds) {
+      let days = Math.floor(seconds / 86400);
+      let hours = Math.floor((seconds % 86400) / 3600);
+      let minutes = Math.floor((seconds % 3600) / 60);
+      
+      if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`;
+      } else if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else {
+        return `${minutes}m`;
+      }
+    }
+    
+    // Actualizar todo
+    function refreshAll() {
+      loadNodes();
+    }
+    
+    // WebSocket para actualizaciones en tiempo real (futuro)
+    function connectWebSocket() {
+      // Implementar WebSocket para actualizaciones en tiempo real
+      // Por ahora usar polling
+    }
+    
+    // Inicializar
+    $(document).ready(function() {
+      if (!authToken) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      initMap();
+      loadNodes();
+      
+      // Actualizar cada 10 segundos
+      setInterval(loadNodes, 10000);
+      
+      // Buscar nodos
+      $('#searchNode').on('input', updateNodesList);
+    });
+  </script>
+</body>
+</html>

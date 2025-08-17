@@ -69,44 +69,44 @@ Este documento describe las mejoras planificadas y la dirección futura del proy
   - [x] Sistema de callbacks entre componentes
   - [x] Página de configuración avanzada completa
 
-## Fase 4: IoT y Escalabilidad (Q3 2025)
+## Fase 4: IoT y Escalabilidad (Q3 2025) ✅ COMPLETADA - v0.6.0 (17/01/2025)
 ### Objetivo: Sistema distribuido y escalable
 
-- [ ] **Protocolo MQTT**
-  - [ ] Broker MQTT local
-  - [ ] Comunicación con múltiples nodos
-  - [ ] Topics organizados por zonas
-  - [ ] QoS configurables
+- [x] **Protocolo MQTT**
+  - [x] Cliente MQTT completo (MQTTManager)
+  - [x] Comunicación con múltiples nodos
+  - [x] Topics organizados por función
+  - [x] QoS configurables
 
-- [ ] **Múltiples Nodos**
-  - [ ] Firmware para nodos secundarios
-  - [ ] Auto-descubrimiento de nodos
-  - [ ] Mesh networking (ESP-MESH)
-  - [ ] Sincronización de estados
+- [x] **Múltiples Nodos**
+  - [x] Firmware para nodos secundarios
+  - [x] Auto-descubrimiento de nodos
+  - [x] Sincronización de estados
+  - [ ] Mesh networking avanzado (postponed)
 
-- [ ] **OTA Updates**
-  - [ ] Actualización remota de firmware
-  - [ ] Versionado de firmware
-  - [ ] Rollback automático si falla
-  - [ ] Actualización por grupos
+- [x] **OTA Updates**
+  - [x] Actualización remota de firmware
+  - [x] Versionado de firmware
+  - [x] Sistema de seguridad con tokens
+  - [x] Actualización individual y grupal
 
-## Fase 5: Interfaz Moderna (Q3-Q4 2025)
+## Fase 5: Interfaz Moderna (Q3-Q4 2025) ✅ COMPLETADA - v0.7.0 (17/01/2025)
 ### Objetivo: UX/UI profesional y moderna
 
-- [ ] **Dashboard Avanzado**
-  - [ ] Estadísticas en tiempo real
-  - [ ] Gráficos de consumo energético
-  - [ ] Mapa de calor de fallas
-  - [ ] KPIs del sistema
+- [x] **Dashboard Avanzado**
+  - [x] Estadísticas en tiempo real
+  - [x] Gráficos de consumo energético
+  - [x] Mapa de calor de fallas
+  - [x] KPIs del sistema
 
-- [ ] **Control Granular**
-  - [ ] Control individual de luminarias
-  - [ ] Agrupación por zonas
-  - [ ] Dimming (control de intensidad)
-  - [ ] Escenas predefinidas
+- [x] **Control Granular**
+  - [x] Control individual de luminarias
+  - [x] Agrupación por zonas
+  - [x] Dimming (control de intensidad)
+  - [x] Escenas predefinidas
 
 - [ ] **Progressive Web App**
-  - [ ] Diseño responsive mejorado
+  - [ ] Diseño responsive mejorado (parcial)
   - [ ] Modo offline
   - [ ] Instalable en móviles
   - [ ] Push notifications

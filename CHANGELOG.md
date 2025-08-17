@@ -8,11 +8,103 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [Unreleased]
 ### Por Hacer
 - WebSockets para actualizaciones en tiempo real
-- OTA (Over-The-Air) updates
 - HTTPS con certificados SSL
 - Integración con servicios externos (Weather API, Smart Grid)
 - Machine Learning para predicción de fallas
-- Dashboard móvil responsivo
+- Progressive Web App (PWA)
+- Análisis predictivo de mantenimiento
+
+## [0.7.0] - 2025-01-17
+### Agregado - Fase 5: Interfaz Moderna
+- **SceneManager Completo**
+  - Sistema de escenas y dimming
+  - 5 presets predefinidos (eco, nocturno, emergencia, trabajo, festivo)
+  - Control de intensidad 0-100%
+  - Transiciones suaves con fade
+  - Efectos visuales (onda, aleatorio, pulsar)
+  
+- **Dashboard Moderno**
+  - dashboard.html con diseño glassmorphism
+  - KPIs con animaciones en tiempo real
+  - Gráficos de consumo con Chart.js
+  - Mapa de calor de fallas con Leaflet
+  - Estadísticas y métricas avanzadas
+  
+- **Control de Escenas**
+  - escenas.html interfaz completa
+  - Control por zonas visuales
+  - Dimming individual y grupal
+  - Efectos especiales
+  - Timeline de programación
+  
+- **Sistema de Zonas Visuales**
+  - ZoneVisualManager integrado
+  - Agrupación lógica de luminarias
+  - Control por zona en mapa
+  - Colores y visualización
+  
+- **APIs de Control Avanzado**
+  - /api/scenes - gestión de escenas
+  - /api/dimming - control de intensidad
+  - /api/zones/control - control por zonas
+  - /api/effects - efectos visuales
+  - /api/zones/visual - mapa de zonas
+
+### Mejorado
+- main.cpp actualizado con SceneManager
+- Estructura Luminaria con campos de zona y dimming
+- Integración completa MQTT-Escenas
+- Callbacks para sincronización de estados
+
+## [0.6.0] - 2025-01-17
+### Agregado - Fase 4: IoT y Escalabilidad
+- **MQTTManager Completo**
+  - Cliente MQTT con PubSubClient
+  - Auto-discovery de nodos
+  - Topics organizados por función
+  - Comunicación bidireccional
+  - Heartbeat y telemetría automática
+  
+- **Firmware para Nodos Secundarios**
+  - node_luminaria.cpp independiente
+  - Configuración persistente en EEPROM
+  - Modo automático con horarios
+  - Control por zonas
+  - Telemetría de consumo
+  
+- **Sistema OTA (Over-The-Air)**
+  - OTAManager.h/cpp completo
+  - Actualización HTTP y ArduinoOTA
+  - Verificación de versiones
+  - Seguridad con tokens
+  - Progreso en tiempo real
+  
+- **Dashboard Multi-Nodo**
+  - nodos.html con gestión completa
+  - Mapa con ubicación de nodos
+  - Control individual y grupal
+  - Estadísticas en tiempo real
+  - Interfaz de actualización OTA
+  
+- **Comunicación IoT**
+  - Protocolo MQTT implementado
+  - Discovery automático
+  - Sincronización de estados
+  - Comandos broadcast
+  - Sistema de alertas distribuido
+
+### Mejorado
+- main.cpp actualizado con integración MQTT
+- Callbacks para eventos de nodos
+- APIs REST para gestión MQTT
+- Sincronización automática de estados
+- Soporte para múltiples nodos simultáneos
+
+### Técnico
+- 3000+ líneas de código IoT
+- Arquitectura distribuida
+- Protocolo MQTT estándar
+- Sistema OTA robusto
 
 ## [0.5.0] - 2025-01-17
 ### Agregado - Fase 3: Características Avanzadas Completada

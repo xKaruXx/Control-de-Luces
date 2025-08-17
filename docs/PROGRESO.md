@@ -1,9 +1,9 @@
 # 📊 Progreso del Proyecto - Control de Alumbrado Público
 
 ## 🎯 Resumen Ejecutivo
-**Versión Actual**: 0.5.0  
-**Fases Completadas**: 3 de 7  
-**Progreso Total**: ~43%  
+**Versión Actual**: 0.7.0  
+**Fases Completadas**: 5 de 7  
+**Progreso Total**: ~71%  
 **Última Actualización**: 17/01/2025  
 
 ---
@@ -106,15 +106,61 @@ data/
 
 ---
 
-### Fase 4: IoT y Escalabilidad ⏳ PLANIFICADA (0%)
-**Período Estimado**: Q3 2025  
-**Versión Target**: 0.6.0  
+### Fase 4: IoT y Escalabilidad ✅ COMPLETADA (100%)
+**Período**: Enero 2025  
+**Versión**: 0.6.0  
+
+#### Logros:
+- ✅ Protocolo MQTT implementado con PubSubClient
+- ✅ Auto-descubrimiento de nodos ESP8266
+- ✅ Comunicación bidireccional con múltiples nodos
+- ✅ Sistema OTA para actualizaciones remotas
+- ✅ Firmware para nodos secundarios (node_luminaria.cpp)
+- ✅ Dashboard multi-nodo (nodos.html)
+- ✅ Sincronización de estados en tiempo real
+- ✅ Telemetría y monitoreo remoto
+- ✅ 10+ nuevas APIs MQTT
+
+#### Archivos Creados:
+```
+src/
+├── MQTTManager.h & .cpp    ✅ Gestor MQTT completo
+├── OTAManager.h & .cpp     ✅ Sistema OTA
+└── node_luminaria.cpp      ✅ Firmware nodos secundarios
+
+data/
+└── nodos.html              ✅ Dashboard multi-nodo
+```
 
 ---
 
-### Fase 5: Interfaz Moderna ⏳ PLANIFICADA (0%)
-**Período Estimado**: Q3-Q4 2025  
-**Versión Target**: 0.7.0  
+### Fase 5: Interfaz Moderna ✅ COMPLETADA (100%)
+**Período**: Enero 2025  
+**Versión**: 0.7.0  
+
+#### Logros:
+- ✅ Dashboard moderno con estadísticas en tiempo real
+- ✅ Gráficos de consumo energético con Chart.js
+- ✅ Mapa de calor de fallas con Leaflet
+- ✅ KPIs del sistema con animaciones
+- ✅ Control granular de luminarias individuales
+- ✅ Sistema de agrupación por zonas visuales
+- ✅ Control de dimming (0-100% intensidad)
+- ✅ 5 escenas predefinidas (eco, nocturno, emergencia, trabajo, festivo)
+- ✅ Efectos visuales (onda, aleatorio, fade, pulsar)
+- ✅ Interfaz de control de escenas completa
+- ✅ 15+ nuevas APIs para escenas y dimming
+
+#### Archivos Creados:
+```
+src/
+├── SceneManager.h & .cpp   ✅ Gestor de escenas y dimming
+└── main.cpp                ✅ Actualizado a v0.7.0
+
+data/
+├── dashboard.html          ✅ Dashboard moderno con glassmorphism
+└── escenas.html            ✅ Control de escenas y efectos
+```
 
 ---
 
@@ -198,6 +244,8 @@ data/
 
 | Versión | Fecha | Fase | Cambios Principales |
 |---------|-------|------|---------------------|
+| 0.7.0 | 17/01/2025 | 5 | Escenas, dimming, dashboard moderno |
+| 0.6.0 | 17/01/2025 | 4 | MQTT, OTA, multi-nodo |
 | 0.5.0 | 17/01/2025 | 3 | Base de datos, programación, alertas |
 | 0.4.0 | 17/01/2025 | 2 | Seguridad completa, autenticación |
 | 0.3.0 | 17/01/2025 | 1 | Sistema completo de logs, memoria y WiFi |

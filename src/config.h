@@ -99,9 +99,18 @@
 #define LOG_DEBUG(msg) if(CURRENT_LOG_LEVEL >= LOG_LEVEL_DEBUG) { Serial.print("[DEBUG] "); Serial.println(msg); }
 
 // =============================
+// CONFIGURACIÓN MQTT
+// =============================
+#define MQTT_BROKER_IP "192.168.1.100"  // IP del broker MQTT (puede ser local o externo)
+#define MQTT_BROKER_PORT 1883
+#define MQTT_USER ""  // Usuario MQTT (opcional)
+#define MQTT_PASSWORD ""  // Contraseña MQTT (opcional)
+#define MQTT_ENABLE true  // Habilitar/deshabilitar MQTT
+
+// =============================
 // VERSIÓN DEL FIRMWARE
 // =============================
-#define FIRMWARE_VERSION "0.5.0"
+#define FIRMWARE_VERSION "0.7.0"
 #define BUILD_DATE __DATE__
 #define BUILD_TIME __TIME__
 

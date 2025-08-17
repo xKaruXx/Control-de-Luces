@@ -1,7 +1,7 @@
 // =============================
 // Sistema de Control de Alumbrado Público
 // Nodo Central - ESP8266
-// Versión: 0.5.0 - Fase 3: Características Avanzadas
+// Versión: 0.7.0 - Fase 5: Interfaz Moderna
 // =============================
 
 #include <ESP8266WiFi.h>
@@ -20,6 +20,8 @@
 #include "DatabaseManager.h"
 #include "ScheduleManager.h"
 #include "AlertManager.h"
+#include "MQTTManager.h"
+#include "SceneManager.h"
 
 // =============================
 // VARIABLES GLOBALES
@@ -35,8 +37,10 @@ struct Luminaria {
   float lng;
   String estado;  // encendida, apagada, falla
   uint32_t ultimaActualizacion;
-  uint8_t intensidad;  // 0-100% para futuro dimming
+  uint8_t intensidad;  // 0-100% para dimming
   String id;  // ID único de la luminaria
+  String zona;  // Zona a la que pertenece
+  bool dimeable;  // Si soporta dimming
 };
 
 std::vector<Luminaria> luminarias;
@@ -98,6 +102,8 @@ String getLuminariasJson() {
     obj["lng"] = luz.lng;
     obj["estado"] = luz.estado;
     obj["intensidad"] = luz.intensidad;
+    obj["zona"] = luz.zona;
+    obj["dimeable"] = luz.dimeable;
     obj["ultima_actualizacion"] = luz.ultimaActualizacion;
   }
 
@@ -679,6 +685,161 @@ void setupWebServer() {
     }
   });
   
+  // === APIs FASE 5: ESCENAS Y DIMMING ===
+  
+  // API: Obtener escenas
+  server.on("/api/scenes", HTTP_GET, [](AsyncWebServerRequest *request){
+    REQUIRE_AUTH(request, ROLE_VIEWER);
+    request->send(200, "application/json", Scenes.getSceneStatistics());
+  });
+  
+  // API: Activar escena
+  server.on("/api/scenes/activate", HTTP_POST, [](AsyncWebServerRequest *request){},
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      REQUIRE_AUTH(request, ROLE_OPERATOR);
+      
+      StaticJsonDocument<256> doc;
+      DeserializationError error = deserializeJson(doc, data);
+      
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+      
+      uint32_t sceneId = doc["sceneId"];
+      
+      if (Scenes.activateScene(sceneId)) {
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+      } else {
+        request->send(400, "application/json", "{\"error\":\"No se pudo activar la escena\"}");
+      }
+    });
+  
+  // API: Activar preset
+  server.on("/api/scenes/preset", HTTP_POST, [](AsyncWebServerRequest *request){},
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      REQUIRE_AUTH(request, ROLE_OPERATOR);
+      
+      StaticJsonDocument<128> doc;
+      DeserializationError error = deserializeJson(doc, data);
+      
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+      
+      String preset = doc["preset"].as<String>();
+      
+      if (preset == "emergency") {
+        Scenes.activateEmergencyLighting();
+      } else if (preset == "eco") {
+        Scenes.activateEcoMode();
+      } else if (preset == "night") {
+        Scenes.activateNightMode();
+      } else if (Scenes.activatePreset(preset)) {
+        // Preset personalizado activado
+      } else {
+        request->send(400, "application/json", "{\"error\":\"Preset no encontrado\"}");
+        return;
+      }
+      
+      request->send(200, "application/json", "{\"status\":\"ok\"}");
+    });
+  
+  // API: Control de dimming
+  server.on("/api/dimming", HTTP_POST, [](AsyncWebServerRequest *request){},
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      REQUIRE_AUTH(request, ROLE_OPERATOR);
+      
+      StaticJsonDocument<256> doc;
+      DeserializationError error = deserializeJson(doc, data);
+      
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+      
+      String lightId = doc["lightId"].as<String>();
+      uint8_t brightness = doc["brightness"];
+      uint32_t transitionTime = doc["transitionTime"] | 1000;
+      
+      if (Scenes.setLightBrightness(lightId, brightness, transitionTime)) {
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+      } else {
+        request->send(400, "application/json", "{\"error\":\"No se pudo ajustar el brillo\"}");
+      }
+    });
+  
+  // API: Control de zona
+  server.on("/api/zones/control", HTTP_POST, [](AsyncWebServerRequest *request){},
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      REQUIRE_AUTH(request, ROLE_OPERATOR);
+      
+      StaticJsonDocument<256> doc;
+      DeserializationError error = deserializeJson(doc, data);
+      
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+      
+      String zoneId = doc["zoneId"].as<String>();
+      uint8_t brightness = doc["brightness"];
+      uint32_t transitionTime = doc["transitionTime"] | 1000;
+      
+      if (Scenes.setZoneBrightness(zoneId, brightness, transitionTime)) {
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+      } else {
+        request->send(400, "application/json", "{\"error\":\"No se pudo ajustar la zona\"}");
+      }
+    });
+  
+  // API: Obtener zonas visuales
+  server.on("/api/zones/visual", HTTP_GET, [](AsyncWebServerRequest *request){
+    REQUIRE_AUTH(request, ROLE_VIEWER);
+    request->send(200, "application/json", ZoneVisual.getZoneMapJSON());
+  });
+  
+  // API: Efecto especial
+  server.on("/api/effects", HTTP_POST, [](AsyncWebServerRequest *request){},
+    NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      REQUIRE_AUTH(request, ROLE_OPERATOR);
+      
+      StaticJsonDocument<256> doc;
+      DeserializationError error = deserializeJson(doc, data);
+      
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"JSON inválido\"}");
+        return;
+      }
+      
+      String effect = doc["effect"].as<String>();
+      String targetId = doc["targetId"].as<String>();
+      uint32_t duration = doc["duration"] | 5000;
+      
+      if (effect == "wave") {
+        Scenes.waveEffect(targetId, duration);
+      } else if (effect == "random") {
+        Scenes.randomEffect(targetId, duration);
+      } else if (effect == "fadeIn") {
+        Scenes.fadeIn(targetId, duration);
+      } else if (effect == "fadeOut") {
+        Scenes.fadeOut(targetId, duration);
+      } else if (effect == "pulsate") {
+        Scenes.pulsate(targetId, 20, 100, duration);
+      } else {
+        request->send(400, "application/json", "{\"error\":\"Efecto no válido\"}");
+        return;
+      }
+      
+      request->send(200, "application/json", "{\"status\":\"ok\"}");
+    });
+  
   // Manejo de rutas no encontradas
   server.onNotFound([](AsyncWebServerRequest *request){
     SystemLogger.warning("Ruta no encontrada: " + request->url() + " desde " + getClientIdentifier(request), "WEB");
@@ -791,6 +952,147 @@ void setup() {
   WiFiMgr.onDisconnect(onWiFiDisconnect);
   WiFiMgr.begin(WIFI_SSID, WIFI_PASSWORD);
   
+  // === FASE 4: Configurar MQTT ===
+  
+  // Inicializar MQTT Manager
+  MQTT.setNodeInfo("CENTRAL_" + String(ESP.getChipId()), NODE_CENTRAL);
+  MQTT.enableAutoDiscovery(true);
+  
+  // Configurar callbacks MQTT
+  MQTT.onNodeDiscovered([](const NodeInfo& node) {
+    SystemLogger.info("Nuevo nodo descubierto: " + node.nodeId + " (" + node.ip + ")", "MQTT");
+    
+    // Agregar nodo a la base de datos
+    Database.logEvent(node.nodeId, EVENT_STATE_CHANGE, "Nodo descubierto", "DISCOVERY");
+    
+    // Si es una luminaria, agregarla al sistema
+    if (node.type == NODE_LUMINARIA) {
+      // Crear luminaria virtual para el nodo
+      Luminaria nuevaLuz;
+      nuevaLuz.id = node.nodeId;
+      nuevaLuz.lat = DEFAULT_LAT + (random(-100, 100) / 10000.0);  // Posición aleatoria cerca del centro
+      nuevaLuz.lng = DEFAULT_LNG + (random(-100, 100) / 10000.0);
+      nuevaLuz.estado = "apagada";
+      nuevaLuz.ultimaActualizacion = millis();
+      nuevaLuz.intensidad = 100;
+      luminarias.push_back(nuevaLuz);
+      
+      SystemLogger.info("Luminaria MQTT agregada: " + node.nodeId, "MQTT");
+    }
+  });
+  
+  // Callback para mensajes de estado
+  MQTT.onMessage("luces/status/+", [](const String& topic, const String& payload) {
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (!error) {
+      String nodeId = doc["nodeId"].as<String>();
+      bool online = doc["online"];
+      bool lightOn = doc["light"];
+      
+      // Actualizar estado de luminaria
+      for (auto& luz : luminarias) {
+        if (luz.id == nodeId) {
+          luz.estado = online ? (lightOn ? "encendida" : "apagada") : "offline";
+          luz.ultimaActualizacion = millis();
+          break;
+        }
+      }
+    }
+  });
+  
+  // Callback para telemetría
+  MQTT.onMessage("luces/telemetry/+", [](const String& topic, const String& payload) {
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (!error) {
+      String nodeId = doc["nodeId"].as<String>();
+      float power = doc["power"]["watts"];
+      
+      // Registrar consumo
+      Database.recordConsumption(nodeId, power, power * 0.001);
+      
+      // Verificar alertas de consumo
+      Alerts.checkConsumption(nodeId, power);
+    }
+  });
+  
+  // Callback para alertas de nodos
+  MQTT.onMessage("luces/alert/+", [](const String& topic, const String& payload) {
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (!error) {
+      String nodeId = doc["nodeId"].as<String>();
+      String type = doc["type"].as<String>();
+      String message = doc["message"].as<String>();
+      
+      // Crear alerta en el sistema
+      Alerts.createAlert(ALERT_FAILURE, SEVERITY_WARNING, nodeId, message, type);
+    }
+  });
+  
+  // Conectar a broker MQTT (configurar IP del broker)
+  if (WiFiMgr.isConnected()) {
+    MQTT.begin(MQTT_BROKER_IP, MQTT_BROKER_PORT);
+  }
+  
+  // === FASE 5: Inicializar SceneManager ===
+  if (Scenes.begin()) {
+    SystemLogger.info("Scene Manager iniciado correctamente", "SYSTEM");
+    
+    // Registrar callback para control de dimming
+    Scenes.setDimmingCallback([](const String& lightId, uint8_t brightness) {
+      // Actualizar brillo de la luminaria
+      for (auto& luz : luminarias) {
+        if (luz.id == lightId) {
+          luz.intensidad = brightness;
+          luz.ultimaActualizacion = millis();
+          
+          // Si está apagada y el brillo es > 0, encenderla
+          if (brightness > 0 && luz.estado == "apagada") {
+            luz.estado = "encendida";
+          } else if (brightness == 0) {
+            luz.estado = "apagada";
+          }
+          
+          // Publicar cambio por MQTT si está habilitado
+          if (MQTT_ENABLE && MQTT.isConnected()) {
+            StaticJsonDocument<256> doc;
+            doc["id"] = luz.id;
+            doc["brightness"] = brightness;
+            doc["estado"] = luz.estado;
+            String payload;
+            serializeJson(doc, payload);
+            MQTT.publishTelemetry(luz.id, payload);
+          }
+          
+          SystemLogger.debug("Dimming - Luz: " + lightId + ", Brillo: " + String(brightness) + "%", "SCENE");
+          break;
+        }
+      }
+    });
+    
+    // Inicializar zonas visuales
+    ZoneVisual.createZone("zona_centro", "Centro Ciudad");
+    ZoneVisual.createZone("zona_norte", "Zona Norte");
+    ZoneVisual.createZone("zona_sur", "Zona Sur");
+    ZoneVisual.createZone("zona_este", "Zona Este");
+    ZoneVisual.createZone("zona_oeste", "Zona Oeste");
+    
+    // Asignar luminarias a zonas (ejemplo)
+    int zonaIndex = 0;
+    String zonas[] = {"zona_centro", "zona_norte", "zona_sur", "zona_este", "zona_oeste"};
+    for (auto& luz : luminarias) {
+      luz.zona = zonas[zonaIndex % 5];
+      luz.dimeable = true;  // Todas las luminarias soportan dimming
+      ZoneVisual.addLightToZone(luz.zona, luz.id);
+      zonaIndex++;
+    }
+    
+  } else {
+    SystemLogger.error("Error iniciando Scene Manager", "SYSTEM");
+  }
+  
   // Configurar servidor web
   setupWebServer();
   
@@ -833,6 +1135,15 @@ void loop() {
   if (WiFiMgr.isConnected()) {
     MDNS.update();
   }
+  
+  // === FASE 4: Actualizar MQTT ===
+  if (MQTT_ENABLE) {
+    MQTT.loop();
+  }
+  
+  // === FASE 5: Actualizar SceneManager ===
+  Scenes.loop();
+  Dimming.update();
   
   // Verificar memoria y seguridad
   if (millis() - lastUpdate > UPDATE_INTERVAL) {
